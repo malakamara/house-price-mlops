@@ -4,6 +4,9 @@
 
 Ce projet est une application MLOps complète pour la prédiction du prix des maisons utilisant un modèle de **Random Forest Regressor**. Le projet implémente un pipeline end-to-end allant de la préparation des données, à l'entraînement du modèle, jusqu'au déploiement sur Azure Container Apps avec monitoring et détection de drift.
 
+
+
+
 ## 🎯 Objectif
 
 Créer et déployer un modèle de Machine Learning pour prédire le prix des maisons à partir de caractéristiques telles que :
