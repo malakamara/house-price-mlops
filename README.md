@@ -16,6 +16,9 @@ Créer et déployer un modèle de Machine Learning pour prédire le prix des mai
 - **YearBuilt** : Année de construction
 - **TotalBsmtSF** : Surface du sous-sol (sq ft)
 
+
+
+
 ## 🏗️ Architecture du Projet
 
 ```
