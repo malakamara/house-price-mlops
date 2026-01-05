@@ -1,0 +1,700 @@
+================================================================================
+  GUIDE DES COMMANDES - HOUSE PRICE MLOPS PROJECT
+  Tests, Docker, Déploiement Azure et CI/CD
+================================================================================
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 1 : PRÉPARATION ET TESTS LOCAUX
+═══════════════════════════════════════════════════════════════════════════════
+
+1.1. CONFIGURATION DE L'ENVIRONNEMENT
+--------------------------------------
+
+# Créer un environnement virtuel
+python -m venv venv
+
+# Activer l'environnement (Windows PowerShell)
+venv\Scripts\Activate.ps1
+
+# Activer l'environnement (Linux/Mac)
+source venv/bin/activate
+
+# Installer les dépendances
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Vérifier les installations
+python --version
+git --version
+docker --version
+az --version
+
+
+1.2. TEST DE LA PRÉPARATION DES DONNÉES
+----------------------------------------
+
+# Exécuter le script de préparation
+python prepare_data.py
+
+# Vérifier que le fichier nettoyé a été créé
+# Le fichier data/house_prices_clean.csv doit exister
+
+
+1.3. TEST DE L'ENTRAÎNEMENT DU MODÈLE
+--------------------------------------
+
+# Exécuter l'entraînement
+python train_model.py
+
+# Vérifier les résultats
+# - Modèle sauvegardé : model/house_price_model.pkl
+# - Graphiques générés : prediction_vs_actual.png, feature_importance.png
+# - Métriques affichées : RMSE, R²
+
+# Lancer MLflow UI pour voir les expériences
+mlflow ui --port 5000
+# Ouvrir http://localhost:5000 dans le navigateur
+
+
+1.4. TEST DE L'API LOCALE
+--------------------------
+
+# Lancer l'API en mode développement
+uvicorn app.main:app --reload --port 8000
+
+# Dans un autre terminal, tester les endpoints :
+
+# Test 1 : Health Check (Windows PowerShell)
+Invoke-WebRequest -Uri http://localhost:8000/health -Method GET
+
+# Test 1 : Health Check (Linux/Mac/Git Bash)
+curl http://localhost:8000/health
+
+# Test 2 : Page d'accueil
+curl http://localhost:8000/
+
+# Test 3 : Prédiction (Windows PowerShell)
+$body = @{
+    GrLivArea = 1500.0
+    BedroomAbvGr = 3
+    FullBath = 2
+    YearBuilt = 2000
+    TotalBsmtSF = 800.0
+} | ConvertTo-Json
+Invoke-WebRequest -Uri http://localhost:8000/predict -Method POST -Body $body -ContentType "application/json"
+
+# Test 3 : Prédiction (Linux/Mac/Git Bash)
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "GrLivArea": 1500.0,
+    "BedroomAbvGr": 3,
+    "FullBath": 2,
+    "YearBuilt": 2000,
+    "TotalBsmtSF": 800.0
+  }'
+
+# Test 4 : Test de Drift
+# D'abord générer des données de production avec drift
+python drift_data_gen.py
+
+# Ensuite tester la détection de drift
+curl -X POST "http://localhost:8000/drift/check?threshold=0.05"
+
+# Test 5 : Documentation Swagger
+# Ouvrir http://localhost:8000/docs dans le navigateur
+
+
+1.5. TESTS UNITAIRES AVEC PYTEST
+---------------------------------
+
+# Exécuter tous les tests
+pytest tests/ -v
+
+# Avec couverture de code
+pytest tests/ -v --cov=app --cov-report=term --cov-report=html
+
+# Ouvrir le rapport de couverture HTML
+# Le fichier htmlcov/index.html sera généré
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 2 : TESTS AVEC DOCKER
+═══════════════════════════════════════════════════════════════════════════════
+
+2.1. BUILD DE L'IMAGE DOCKER
+-----------------------------
+
+# Vérifier que le modèle est présent (model/house_price_model.pkl doit exister)
+
+# Build de l'image
+docker build -t house-price-api:local .
+
+# Vérifier que l'image a été créée
+docker images | grep house-price-api
+# ou
+docker images
+
+
+2.2. TEST DU CONTAINER DOCKER
+-------------------------------
+
+# Lancer le container en mode détaché
+docker run -d -p 8000:8000 --name house-price-test house-price-api:local
+
+# Vérifier que le container tourne
+docker ps
+
+# Voir les logs du container
+docker logs house-price-test
+
+# Suivre les logs en temps réel
+docker logs -f house-price-test
+
+# Tester l'API
+curl http://localhost:8000/health
+
+# Test de prédiction
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "GrLivArea": 1500.0,
+    "BedroomAbvGr": 3,
+    "FullBath": 2,
+    "YearBuilt": 2000,
+    "TotalBsmtSF": 800.0
+  }'
+
+# Arrêter le container
+docker stop house-price-test
+
+# Supprimer le container
+docker rm house-price-test
+
+# Arrêter et supprimer en une commande
+docker stop house-price-test && docker rm house-price-test
+
+
+2.3. NETTOYAGE DOCKER (OPTIONNEL)
+----------------------------------
+
+# Voir toutes les images
+docker images
+
+# Supprimer une image
+docker rmi house-price-api:local
+
+# Supprimer toutes les images non utilisées
+docker image prune -a
+
+# Voir tous les containers (y compris arrêtés)
+docker ps -a
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 3 : DÉPLOIEMENT SUR AZURE
+═══════════════════════════════════════════════════════════════════════════════
+
+3.1. CONFIGURATION AZURE CLI
+-----------------------------
+
+# Se connecter à Azure
+az login
+
+# Vérifier l'abonnement actif
+az account show
+
+# Voir tous les abonnements disponibles
+az account list --output table
+
+# Changer d'abonnement si nécessaire
+az account set --subscription "VOTRE-SUBSCRIPTION-ID"
+
+# Vérifier que vous êtes connecté
+az account show
+
+
+3.2. DÉPLOIEMENT MANUEL (Méthode 1 : Scripts)
+----------------------------------------------
+
+# Windows PowerShell - Utiliser le script dédié
+.\deploy.ps1
+
+# Linux/Mac Bash - Utiliser le script dédié
+chmod +x deploy.sh
+./deploy.sh
+
+
+3.3. DÉPLOIEMENT MANUEL (Méthode 2 : Commandes Azure CLI)
+----------------------------------------------------------
+
+# Variables (personnalisez selon vos besoins)
+$RESOURCE_GROUP = "rg-mlops-house-price"
+$LOCATION = "centralus"
+$ACR_NAME = "hprmlkamacr"  # Doit être unique globalement
+$CONTAINER_APP_NAME = "house-price-api"
+$CONTAINERAPPS_ENV = "env-mlops-house-price"
+$IMAGE_NAME = "house-price-api"
+$IMAGE_TAG = "v1"
+
+# Créer le groupe de ressources
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+# Créer Azure Container Registry (ACR)
+az acr create `
+  --resource-group $RESOURCE_GROUP `
+  --name $ACR_NAME `
+  --sku Basic `
+  --admin-enabled true
+
+# Récupérer les identifiants ACR
+$ACR_USERNAME = az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query username -o tsv
+$ACR_PASSWORD = az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "passwords[0].value" -o tsv
+
+echo "ACR Username: $ACR_USERNAME"
+echo "ACR Password: $ACR_PASSWORD"
+# ⚠️ NOTEZ CES IDENTIFIANTS - Vous en aurez besoin pour GitHub Actions
+
+# Créer l'environnement Container Apps
+az containerapp env create `
+  --name $CONTAINERAPPS_ENV `
+  --resource-group $RESOURCE_GROUP `
+  --location $LOCATION
+
+# Build et push de l'image Docker vers ACR
+az acr build `
+  --registry $ACR_NAME `
+  --image $IMAGE_NAME:$IMAGE_TAG `
+  --file Dockerfile .
+
+# Créer la Container App
+az containerapp create `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --environment $CONTAINERAPPS_ENV `
+  --image "$ACR_NAME.azurecr.io/$IMAGE_NAME`:$IMAGE_TAG" `
+  --registry-server "$ACR_NAME.azurecr.io" `
+  --registry-username $ACR_USERNAME `
+  --registry-password $ACR_PASSWORD `
+  --target-port 8000 `
+  --ingress external `
+  --cpu 1.0 `
+  --memory 2.0Gi
+
+# Récupérer l'URL de l'API
+$APP_URL = az containerapp show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query properties.configuration.ingress.fqdn -o tsv
+
+echo "URL de l'API: https://$APP_URL"
+
+
+3.4. CONFIGURATION APPLICATION INSIGHTS (Optionnel mais Recommandé)
+---------------------------------------------------------------------
+
+# Créer une ressource Application Insights
+az monitor app-insights component create `
+  --app house-price-api-insights `
+  --location $LOCATION `
+  --resource-group $RESOURCE_GROUP
+
+# Récupérer la connection string
+$APPINSIGHTS_CONN = az monitor app-insights component show `
+  --app house-price-api-insights `
+  --resource-group $RESOURCE_GROUP `
+  --query connectionString -o tsv
+
+# Mettre à jour la Container App avec la variable d'environnement
+az containerapp update `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --set-env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=$APPINSIGHTS_CONN"
+
+
+3.5. VÉRIFICATION DU DÉPLOIEMENT
+----------------------------------
+
+# Vérifier le statut de la Container App
+az containerapp show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query "{Status:properties.provisioningState,URL:properties.configuration.ingress.fqdn}"
+
+# Voir les logs
+az containerapp logs show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --follow
+
+# Tester les endpoints
+$APP_URL = az containerapp show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query properties.configuration.ingress.fqdn -o tsv
+
+# Health check
+curl https://$APP_URL/health
+
+# Test de prédiction
+curl -X POST "https://$APP_URL/predict" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "GrLivArea": 1500.0,
+    "BedroomAbvGr": 3,
+    "FullBath": 2,
+    "YearBuilt": 2000,
+    "TotalBsmtSF": 800.0
+  }'
+
+# Documentation Swagger
+# Ouvrir https://$APP_URL/docs dans le navigateur
+
+
+3.6. MISE À JOUR DU DÉPLOIEMENT
+---------------------------------
+
+# 1. Rebuild l'image avec un nouveau tag
+az acr build `
+  --registry $ACR_NAME `
+  --image $IMAGE_NAME:v2 `
+  --file Dockerfile .
+
+# 2. Mettre à jour la Container App
+az containerapp update `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --image "$ACR_NAME.azurecr.io/$IMAGE_NAME:v2"
+
+# Vérifier la nouvelle version
+az containerapp show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query "{Image:properties.template.containers[0].image,Revision:properties.latestRevisionName}"
+
+
+3.7. NETTOYAGE DES RESSOURCES AZURE
+-------------------------------------
+
+# Supprimer uniquement la Container App
+az containerapp delete `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP
+
+# Supprimer tout le groupe de ressources (ATTENTION : suppression définitive)
+# Utiliser le script cleanup.sh
+bash cleanup.sh
+
+# Ou manuellement
+az group delete --name $RESOURCE_GROUP --yes --no-wait
+
+# Vérifier que le groupe de ressources est supprimé
+az group show --name $RESOURCE_GROUP
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 4 : CONFIGURATION CI/CD AVEC GITHUB ACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+4.1. PRÉPARATION DES SECRETS GITHUB
+------------------------------------
+
+# 1. Créer un Service Principal Azure (pour AZURE_CREDENTIALS)
+
+# Remplacer SUBSCRIPTION_ID, RESOURCE_GROUP par vos valeurs
+$SUBSCRIPTION_ID = az account show --query id -o tsv
+$RESOURCE_GROUP = "rg-mlops-house-price"
+
+# Créer le service principal
+az ad sp create-for-rbac `
+  --name "github-actions-mlops" `
+  --role contributor `
+  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
+  --sdk-auth
+
+# ⚠️ COPIEZ LA SORTIE JSON COMPLÈTE - C'est votre secret AZURE_CREDENTIALS
+# Format attendu :
+# {
+#   "clientId": "...",
+#   "clientSecret": "...",
+#   "subscriptionId": "...",
+#   "tenantId": "...",
+#   ...
+# }
+
+# 2. Récupérer les identifiants ACR
+$ACR_NAME = "hprmlkamacr"
+az acr credential show `
+  --name $ACR_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query "{username:username,password:passwords[0].value}"
+
+
+4.2. CONFIGURATION DES SECRETS DANS GITHUB
+-------------------------------------------
+
+# Aller dans votre repository GitHub :
+# 1. Settings → Secrets and variables → Actions
+# 2. Cliquer sur "New repository secret"
+# 3. Ajouter les 3 secrets suivants :
+
+# Secret 1 : AZURE_CREDENTIALS
+# Name: AZURE_CREDENTIALS
+# Value: {Le JSON complet de la commande az ad sp create-for-rbac}
+
+# Secret 2 : ACR_USERNAME
+# Name: ACR_USERNAME
+# Value: {Le nom de votre ACR, généralement le même que $ACR_NAME}
+
+# Secret 3 : ACR_PASSWORD
+# Name: ACR_PASSWORD
+# Value: {Le mot de passe ACR récupéré avec az acr credential show}
+
+
+4.3. VÉRIFICATION DU WORKFLOW CI/CD
+------------------------------------
+
+# Vérifier que le fichier .github/workflows/ci-cd.yml existe et est correct
+
+# Vérifier que les variables dans le workflow correspondent à vos ressources :
+# - AZURE_RESOURCE_GROUP : rg-mlops-house-price
+# - CONTAINER_APP_NAME : house-price-api
+# - ACR_NAME : Doit correspondre à votre ACR (le workflow calcule automatiquement)
+#   Si votre ACR a un nom différent, modifiez la ligne 11 du workflow
+
+
+4.4. TEST DU PIPELINE CI/CD
+----------------------------
+
+# 1. Faire une modification mineure (par exemple, ajouter un commentaire)
+# 2. Commit et push sur la branche main
+
+git add .
+git commit -m "Test CI/CD pipeline"
+git push origin main
+
+# 3. Vérifier l'exécution du workflow :
+#    - Aller dans GitHub → Votre repository → Onglet "Actions"
+#    - Vous devriez voir le workflow "CI/CD Pipeline" s'exécuter
+
+# 4. Surveiller les étapes :
+#    ✓ Test : Les tests pytest doivent passer
+#    ✓ Build and push : L'image Docker doit être construite et poussée vers ACR
+#    ✓ Deploy : La Container App doit être mise à jour
+#    ✓ Verify : Le health check doit réussir
+
+
+4.5. VÉRIFICATION DU DÉPLOIEMENT AUTOMATIQUE
+---------------------------------------------
+
+# Après le déploiement, vérifier la nouvelle version
+az containerapp show `
+  --name house-price-api `
+  --resource-group rg-mlops-house-price `
+  --query "{Image:properties.template.containers[0].image,Revision:properties.latestRevisionName}"
+
+# Tester l'API déployée
+$APP_URL = az containerapp show `
+  --name house-price-api `
+  --resource-group rg-mlops-house-price `
+  --query properties.configuration.ingress.fqdn -o tsv
+
+curl https://$APP_URL/health
+
+# Test de prédiction
+curl -X POST "https://$APP_URL/predict" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "GrLivArea": 1500.0,
+    "BedroomAbvGr": 3,
+    "FullBath": 2,
+    "YearBuilt": 2000,
+    "TotalBsmtSF": 800.0
+  }'
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 5 : COMMANDES UTILITAIRES
+═══════════════════════════════════════════════════════════════════════════════
+
+5.1. GESTION DES VARIABLES D'ENVIRONNEMENT
+-------------------------------------------
+
+# Lister les variables d'environnement d'une Container App
+az containerapp show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query properties.template.containers[0].env
+
+# Ajouter une variable d'environnement
+az containerapp update `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --set-env-vars "KEY=VALUE"
+
+# Supprimer une variable d'environnement
+az containerapp update `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --remove-env-vars "KEY"
+
+
+5.2. SCALING DE LA CONTAINER APP
+----------------------------------
+
+# Voir la configuration actuelle
+az containerapp show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query "{Scale:properties.template.scale,CPU:properties.template.containers[0].resources.cpu,Memory:properties.template.containers[0].resources.memory}"
+
+# Mettre à jour les ressources (CPU et mémoire)
+az containerapp update `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --cpu 2.0 `
+  --memory 4.0Gi
+
+# Configurer le scaling (min/max replicas)
+az containerapp update `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --min-replicas 1 `
+  --max-replicas 5
+
+
+5.3. GESTION DES REVISIONS
+---------------------------
+
+# Lister toutes les revisions
+az containerapp revision list `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --query "[].{Name:name,Active:properties.active,Traffic:properties.trafficWeight}"
+
+# Activer une revision spécifique
+az containerapp revision activate `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --revision <REVISION_NAME>
+
+# Désactiver une revision
+az containerapp revision deactivate `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --revision <REVISION_NAME>
+
+
+5.4. MONITORING ET LOGS
+------------------------
+
+# Voir les logs récents
+az containerapp logs show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --tail 100
+
+# Suivre les logs en temps réel
+az containerapp logs show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --follow
+
+# Voir les logs d'une revision spécifique
+az containerapp logs show `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --revision <REVISION_NAME>
+
+# Voir les métriques (via Azure Portal)
+# https://portal.azure.com → Container Apps → Votre app → Metrics
+
+
+5.5. LISTER LES RESSOURCES AZURE
+----------------------------------
+
+# Lister tous les groupes de ressources
+az group list --output table
+
+# Lister toutes les Container Apps dans un groupe de ressources
+az containerapp list --resource-group $RESOURCE_GROUP --output table
+
+# Lister toutes les Container Registry
+az acr list --output table
+
+# Lister tous les Container App Environments
+az containerapp env list --output table
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 6 : CHECKLIST COMPLÈTE
+═══════════════════════════════════════════════════════════════════════════════
+
+☐ Tests locaux passent (pytest)
+☐ Préparation des données fonctionne
+☐ Entraînement génère un modèle valide
+☐ API locale répond correctement
+☐ Tests Docker passent
+☐ Image Docker build sans erreur
+☐ Azure CLI configuré et connecté
+☐ Ressources Azure créées
+☐ Déploiement Azure réussi
+☐ API déployée accessible via HTTPS
+☐ Health check fonctionne
+☐ Endpoint /predict fonctionne
+☐ Documentation Swagger accessible
+☐ Secrets GitHub configurés
+☐ Workflow CI/CD exécuté avec succès
+☐ Déploiement automatique fonctionne
+☐ Logs Azure Container Apps accessibles
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 7 : DÉPANNAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+PROBLÈME : Le modèle n'est pas trouvé lors du déploiement
+SOLUTION : Vérifier que model/house_price_model.pkl est présent et pas dans .dockerignore
+
+PROBLÈME : Erreur de permissions Azure
+SOLUTION : Vérifier que le Service Principal a les bonnes permissions (contributor sur le resource group)
+COMMANDE : az role assignment list --assignee <SP_CLIENT_ID> --scope /subscriptions/<SUB_ID>/resourceGroups/<RG_NAME>
+
+PROBLÈME : L'image Docker ne se push pas vers ACR
+SOLUTION : Vérifier que ACR_USERNAME et ACR_PASSWORD sont corrects dans GitHub Secrets
+COMMANDE : az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP
+
+PROBLÈME : Les tests échouent dans CI/CD
+SOLUTION : Vérifier que tous les tests passent localement
+COMMANDE : pytest tests/ -v
+
+PROBLÈME : L'API retourne 503 après déploiement
+SOLUTION : Vérifier les logs
+COMMANDE : az containerapp logs show --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --follow
+
+PROBLÈME : L'API est lente
+SOLUTION : Augmenter les ressources CPU/mémoire
+COMMANDE : az containerapp update --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --cpu 2.0 --memory 4.0Gi
+
+PROBLÈME : Le workflow GitHub Actions échoue
+SOLUTION : Vérifier les secrets GitHub et les permissions du Service Principal
+COMMANDE : az ad sp show --id <SP_CLIENT_ID>
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  NOTES IMPORTANTES
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️  Pour Windows PowerShell, utiliser des backticks (`) pour les retours à la ligne
+⚠️  Pour Linux/Mac Bash, utiliser des backslashes (\) pour les retours à la ligne
+⚠️  Les noms de ressources Azure doivent être uniques globalement
+⚠️  Le nom ACR ne peut contenir que des minuscules et des chiffres
+⚠️  Garder les identifiants ACR et Service Principal en sécurité
+⚠️  Les ressources Azure peuvent générer des coûts - nettoyer après les tests
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  FIN DU GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+Pour plus de détails, consultez le README.md du projet.

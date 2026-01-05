@@ -1,0 +1,1133 @@
+================================================================================
+  GUIDE COMPLET ÉTAPE PAR ÉTAPE - WINDOWS 10 (PowerShell/CMD)
+  House Price MLOPS Project - Déploiement Complet
+================================================================================
+
+Ce guide vous explique chaque étape en détail pour que vous compreniez
+exactement ce que vous faites à chaque moment.
+
+═══════════════════════════════════════════════════════════════════════════════
+  ÉTAPE 0 : PRÉPARATION INITIALE
+═══════════════════════════════════════════════════════════════════════════════
+
+QUOI FAIRE : Ouvrir PowerShell en tant qu'administrateur
+POURQUOI : Pour avoir les permissions nécessaires pour certaines opérations
+
+COMMENT :
+1. Cliquez sur le bouton Démarrer de Windows
+2. Tapez "PowerShell"
+3. Clic droit sur "Windows PowerShell"
+4. Sélectionnez "Exécuter en tant qu'administrateur"
+5. Cliquez sur "Oui" si Windows demande la permission
+
+
+VÉRIFICATION DES PRÉREQUIS
+---------------------------
+
+Avant de commencer, vérifions que tout est installé sur votre ordinateur.
+
+ÉTAPE 1.1 : Vérifier si Python est installé
+--------------------------------------------
+COMMANDE À COPIER-COLLER :
+python --version
+
+CE QUE ÇA FAIT : Affiche la version de Python installée
+RÉSULTAT ATTENDU : Quelque chose comme "Python 3.9.x" ou "Python 3.10.x"
+SI ÇA NE MARCHE PAS : 
+  - Python n'est pas installé
+  - Python n'est pas dans le PATH Windows
+  - SOLUTION : Installez Python depuis https://www.python.org/downloads/
+  - IMPORTANT : Cochez "Add Python to PATH" lors de l'installation
+
+
+ÉTAPE 1.2 : Vérifier si Git est installé
+-----------------------------------------
+COMMANDE À COPIER-COLLER :
+git --version
+
+CE QUE ÇA FAIT : Affiche la version de Git installée
+RÉSULTAT ATTENDU : Quelque chose comme "git version 2.x.x"
+SI ÇA NE MARCHE PAS : 
+  - Git n'est pas installé
+  - SOLUTION : Installez Git depuis https://git-scm.com/download/win
+
+
+ÉTAPE 1.3 : Vérifier si Docker est installé (Optionnel pour le moment)
+------------------------------------------------------------------------
+COMMANDE À COPIER-COLLER :
+docker --version
+
+CE QUE ÇA FAIT : Affiche la version de Docker installée
+RÉSULTAT ATTENDU : Quelque chose comme "Docker version 20.x.x"
+SI ÇA NE MARCHE PAS : 
+  - Docker Desktop n'est pas installé
+  - SOLUTION : Installez Docker Desktop depuis https://www.docker.com/products/docker-desktop
+  - Note : Vous pouvez le faire plus tard si vous voulez tester Docker localement
+
+
+ÉTAPE 1.4 : Vérifier si Azure CLI est installé (Pour le déploiement)
+----------------------------------------------------------------------
+COMMANDE À COPIER-COLLER :
+az --version
+
+CE QUE ÇA FAIT : Affiche la version d'Azure CLI installée
+RÉSULTAT ATTENDU : Beaucoup de texte avec des versions
+SI ÇA NE MARCHE PAS : 
+  - Azure CLI n'est pas installé
+  - SOLUTION : Installez Azure CLI depuis https://aka.ms/installazurecliwindows
+  - OU utilisez cette commande dans PowerShell (en tant qu'admin) :
+    Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet'; rm .\AzureCLI.msi
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 1 : CONFIGURATION ET TESTS LOCAUX
+═══════════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 1 : Aller dans le dossier du projet
+------------------------------------------
+COMMANDE À COPIER-COLLER :
+cd "C:\Users\mlkam\OneDrive\Desktop\Projet Deploiement Modele\house_price_mlops"
+
+CE QUE ÇA FAIT : Change le répertoire de travail vers votre projet
+EXPLICATION : PowerShell doit savoir où se trouve votre projet pour exécuter les commandes
+VÉRIFICATION : Vous devriez voir le chemin dans votre PowerShell après cette commande
+
+
+ÉTAPE 2 : Créer un environnement virtuel Python
+------------------------------------------------
+COMMANDE À COPIER-COLLER :
+python -m venv venv
+
+CE QUE ÇA FAIT : Crée un dossier "venv" qui contient un Python isolé pour ce projet
+POURQUOI C'EST IMPORTANT : 
+  - Évite les conflits entre différents projets
+  - Permet d'avoir des versions spécifiques de packages pour ce projet
+  - C'est une bonne pratique en Python
+TEMPS : 30 secondes à 1 minute
+
+
+ÉTAPE 3 : Activer l'environnement virtuel
+------------------------------------------
+COMMANDE À COPIER-COLLER :
+.\venv\Scripts\Activate.ps1
+
+CE QUE ÇA FAIT : Active l'environnement virtuel que vous venez de créer
+RÉSULTAT ATTENDU : Vous verrez "(venv)" au début de chaque ligne de commande
+EXPLICATION : Maintenant, toutes les installations Python iront dans ce projet spécifique
+
+SI ÇA NE MARCHE PAS (erreur d'exécution de script) :
+  - Windows bloque l'exécution des scripts PowerShell
+  - SOLUTION : Exécutez cette commande dans PowerShell EN TANT QU'ADMINISTRATEUR :
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  - Puis réessayez : .\venv\Scripts\Activate.ps1
+
+
+ÉTAPE 4 : Mettre à jour pip (gestionnaire de packages Python)
+--------------------------------------------------------------
+COMMANDE À COPIER-COLLER :
+python -m pip install --upgrade pip
+
+CE QUE ÇA FAIT : Met à jour pip vers la dernière version
+EXPLICATION : pip est l'outil qui installe les packages Python
+POURQUOI : Pour être sûr d'avoir la dernière version qui fonctionne bien
+TEMPS : 30 secondes
+
+
+ÉTAPE 5 : Installer toutes les dépendances du projet
+------------------------------------------------------
+COMMANDE À COPIER-COLLER :
+pip install -r requirements.txt
+
+CE QUE ÇA FAIT : Lit le fichier requirements.txt et installe tous les packages listés dedans
+EXPLICATION : 
+  - requirements.txt contient la liste de tous les packages nécessaires (FastAPI, scikit-learn, etc.)
+  - pip installe chacun d'eux avec la bonne version
+POURQUOI : Votre projet a besoin de ces packages pour fonctionner
+TEMPS : 2 à 5 minutes (selon votre connexion Internet)
+RÉSULTAT ATTENDU : Beaucoup de texte montrant l'installation de chaque package
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 2 : PRÉPARATION DES DONNÉES
+═══════════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 6 : Vérifier que le fichier de données existe
+-----------------------------------------------------
+COMMANDE À COPIER-COLLER :
+Test-Path "data\house_prices.csv"
+
+CE QUE ÇA FAIT : Vérifie si le fichier existe
+RÉSULTAT ATTENDU : 
+  - Si ça affiche "True" : Le fichier existe, vous pouvez continuer
+  - Si ça affiche "False" : Le fichier n'existe pas
+
+SI LE FICHIER N'EXISTE PAS :
+  - Vous devez placer votre fichier house_prices.csv dans le dossier "data"
+  - Si vous n'avez pas le fichier, vous devrez le télécharger ou le créer
+
+
+ÉTAPE 7 : Préparer les données (nettoyage et transformation)
+-------------------------------------------------------------
+COMMANDE À COPIER-COLLER :
+python prepare_data.py
+
+CE QUE ÇA FAIT : 
+  - Lit le fichier data/house_prices.csv
+  - Nettoie les données (supprime les valeurs manquantes)
+  - Renomme les colonnes (enlève les espaces)
+  - Crée un nouveau fichier : data/house_prices_clean.csv
+
+EXPLICATION : Les données brutes ont besoin d'être nettoyées avant de les utiliser
+TEMPS : 5 à 10 secondes
+RÉSULTAT ATTENDU : 
+  - Des messages affichés montrant le processus
+  - Un message "✅ Données préparées avec succès !"
+  - Le fichier data/house_prices_clean.csv est créé
+
+VÉRIFICATION :
+COMMANDE :
+Test-Path "data\house_prices_clean.csv"
+
+RÉSULTAT ATTENDU : "True" (le fichier nettoyé existe)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 3 : ENTRÀINEMENT DU MODÈLE
+═══════════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 8 : Entraîner le modèle de Machine Learning
+--------------------------------------------------
+COMMANDE À COPIER-COLLER :
+python train_model.py
+
+CE QUE ÇA FAIT :
+  1. Charge les données nettoyées
+  2. Divise les données en données d'entraînement (80%) et de test (20%)
+  3. Entraîne un modèle Random Forest
+  4. Évalue les performances du modèle
+  5. Sauvegarde le modèle dans model/house_price_model.pkl
+  6. Crée des graphiques (prediction_vs_actual.png, feature_importance.png)
+  7. Enregistre tout dans MLflow (outil de suivi des expériences ML)
+
+EXPLICATION :
+  - Random Forest : Un algorithme de Machine Learning qui apprend à prédire les prix
+  - Le modèle apprend des exemples de maisons avec leurs prix
+  - Ensuite, il peut prédire le prix de nouvelles maisons
+
+TEMPS : 30 secondes à 2 minutes
+RÉSULTAT ATTENDU :
+  - Des messages montrant le processus
+  - À la fin, vous verrez :
+    ==================================================
+    RÉSULTATS DE L'ENTRAÎNEMENT
+    ==================================================
+    RMSE : $XXXXX.XX
+    R²   : 0.XXXX
+    ==================================================
+  - RMSE : Erreur moyenne (plus c'est bas, mieux c'est)
+  - R² : Qualité de prédiction (plus proche de 1, mieux c'est)
+
+VÉRIFICATIONS :
+1. Vérifier que le modèle est créé :
+   COMMANDE : Test-Path "model\house_price_model.pkl"
+   RÉSULTAT ATTENDU : "True"
+
+2. Vérifier que les graphiques sont créés :
+   COMMANDE : Test-Path "prediction_vs_actual.png"
+   RÉSULTAT ATTENDU : "True"
+
+
+ÉTAPE 9 (Optionnel) : Voir les résultats dans MLflow
+-----------------------------------------------------
+COMMANDE À COPIER-COLLER :
+mlflow ui --port 5000
+
+CE QUE ÇA FAIT : Lance un serveur web local qui affiche les résultats de l'entraînement
+POURQUOI : Pour voir les métriques, les graphiques, et comparer différentes expériences
+TEMPS : Quelques secondes pour démarrer
+RÉSULTAT ATTENDU : Un message disant que le serveur est lancé
+
+POUR VOIR LES RÉSULTATS :
+  1. Ouvrez votre navigateur web (Chrome, Edge, Firefox)
+  2. Allez à l'adresse : http://localhost:5000
+  3. Vous verrez une interface avec vos expériences ML
+
+POUR ARRÊTER MLFLOW :
+  - Appuyez sur Ctrl + C dans le PowerShell
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 4 : TESTER L'API LOCALEMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 10 : Lancer l'API FastAPI
+--------------------------------
+COMMANDE À COPIER-COLLER :
+uvicorn app.main:app --reload --port 8000
+
+CE QUE ÇA FAIT :
+  - Lance un serveur web qui expose votre modèle via une API
+  - --reload : Redémarre automatiquement si vous modifiez le code (pratique pour le développement)
+  - --port 8000 : L'API sera accessible sur le port 8000
+
+EXPLICATION :
+  - Une API (Application Programming Interface) permet à d'autres programmes de communiquer avec votre modèle
+  - Au lieu d'exécuter Python à chaque fois, l'API reste active et répond aux requêtes
+
+TEMPS : Quelques secondes pour démarrer
+RÉSULTAT ATTENDU :
+  - Des messages montrant que l'API démarre
+  - Un message final : "Uvicorn running on http://127.0.0.1:8000"
+  - L'API reste active (ne fermez pas cette fenêtre PowerShell)
+
+IMPORTANT : Gardez cette fenêtre PowerShell ouverte ! L'API doit tourner en continu.
+
+
+ÉTAPE 11 : Tester l'API (dans un NOUVEAU PowerShell)
+-----------------------------------------------------
+Ouvrez un NOUVEAU PowerShell (laissez l'autre ouvert avec l'API qui tourne)
+
+ÉTAPE 11.1 : Tester la page d'accueil
+--------------------------------------
+COMMANDE À COPIER-COLLER :
+Invoke-WebRequest -Uri http://localhost:8000/ -UseBasicParsing
+
+CE QUE ÇA FAIT : Envoie une requête HTTP GET à l'API
+RÉSULTAT ATTENDU : 
+  - StatusCode : 200 (ça veut dire que ça a marché)
+  - Content : Un JSON avec des informations sur l'API
+
+POUR VOIR LE RÉSULTAT MIEUX :
+COMMANDE :
+(Invoke-WebRequest -Uri http://localhost:8000/ -UseBasicParsing).Content
+
+CE QUE ÇA FAIT : Affiche seulement le contenu de la réponse
+
+
+ÉTAPE 11.2 : Tester le health check
+------------------------------------
+COMMANDE À COPIER-COLLER :
+Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing
+
+CE QUE ÇA FAIT : Vérifie que l'API fonctionne et que le modèle est chargé
+RÉSULTAT ATTENDU :
+  - StatusCode : 200
+  - Content : {"status":"healthy","model_loaded":true}
+
+
+ÉTAPE 11.3 : Faire une prédiction (le vrai test !)
+---------------------------------------------------
+COMMANDE À COPIER-COLLER :
+$body = @{
+    GrLivArea = 1500.0
+    BedroomAbvGr = 3
+    FullBath = 2
+    YearBuilt = 2000
+    TotalBsmtSF = 800.0
+} | ConvertTo-Json
+
+$response = Invoke-WebRequest -Uri http://localhost:8000/predict -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+
+$response.Content
+
+CE QUE ÇA FAIT :
+  1. Crée un objet JSON avec les caractéristiques d'une maison
+  2. Envoie une requête POST à l'API avec ces données
+  3. L'API utilise le modèle pour prédire le prix
+  4. Affiche la réponse (le prix prédit)
+
+EXPLICATION :
+  - GrLivArea : Surface habitable (1500 pieds carrés)
+  - BedroomAbvGr : Nombre de chambres (3)
+  - FullBath : Nombre de salles de bain (2)
+  - YearBuilt : Année de construction (2000)
+  - TotalBsmtSF : Surface du sous-sol (800 pieds carrés)
+
+RÉSULTAT ATTENDU :
+  - Quelque chose comme : {"predicted_price":185234.56,"price_range":"Medium"}
+  - predicted_price : Le prix prédit par le modèle
+  - price_range : La catégorie (Low, Medium, High, Very High)
+
+
+ÉTAPE 11.4 : Voir la documentation Swagger
+-------------------------------------------
+Dans votre navigateur web, allez à :
+http://localhost:8000/docs
+
+CE QUE ÇA FAIT : Affiche une interface graphique pour tester l'API
+POURQUOI C'EST UTILE :
+  - Vous pouvez tester tous les endpoints facilement
+  - Vous voyez la structure des données attendues
+  - Pas besoin de taper des commandes PowerShell
+
+COMMENT UTILISER :
+  1. Cliquez sur "POST /predict"
+  2. Cliquez sur "Try it out"
+  3. Modifiez les valeurs dans le champ "Request body"
+  4. Cliquez sur "Execute"
+  5. Vous verrez la réponse en bas
+
+
+ÉTAPE 12 : Tester la détection de drift (Optionnel)
+-----------------------------------------------------
+ÉTAPE 12.1 : Générer des données de test
+-----------------------------------------
+Dans le PowerShell où l'API tourne, arrêtez-la (Ctrl+C), puis :
+COMMANDE :
+python drift_data_gen.py
+
+CE QUE ÇA FAIT : Génère un fichier data/production_data.csv avec des données similaires aux données d'entraînement mais avec un léger "drift" (changement dans la distribution)
+POURQUOI : Pour tester la fonctionnalité de détection de drift
+
+
+ÉTAPE 12.2 : Relancer l'API
+----------------------------
+COMMANDE :
+uvicorn app.main:app --reload --port 8000
+
+
+ÉTAPE 12.3 : Tester la détection de drift
+------------------------------------------
+Dans le NOUVEAU PowerShell :
+COMMANDE :
+Invoke-WebRequest -Uri "http://localhost:8000/drift/check?threshold=0.05" -Method POST -UseBasicParsing
+
+CE QUE ÇA FAIT : Compare les données de production avec les données d'entraînement pour détecter des changements
+EXPLICATION : Si les données changent trop, le modèle peut devenir moins précis
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 5 : TESTS UNITAIRES
+═══════════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 13 : Exécuter les tests automatiques
+--------------------------------------------
+Dans le PowerShell (l'API peut être arrêtée pour cette étape) :
+COMMANDE :
+pytest tests/ -v
+
+CE QUE ÇA FAIT : Exécute tous les tests définis dans le dossier tests/
+EXPLICATION : Les tests vérifient automatiquement que l'API fonctionne correctement
+TEMPS : 5 à 10 secondes
+RÉSULTAT ATTENDU :
+  - Vous verrez plusieurs tests s'exécuter
+  - Chaque test devrait montrer "PASSED" (réussi)
+  - À la fin : "X passed" (X = nombre de tests)
+
+
+EXÉCUTER LES TESTS AVEC COUVERTURE DE CODE :
+---------------------------------------------
+COMMANDE :
+pytest tests/ -v --cov=app --cov-report=term
+
+CE QUE ÇA FAIT :
+  - Exécute les tests
+  - Mesure quelle partie du code est testée (couverture)
+  - Affiche un rapport montrant quel pourcentage du code est couvert par les tests
+
+POURQUOI C'EST UTILE : Pour savoir si vous avez assez de tests
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 6 : DOCKER (Optionnel - pour tester localement)
+═══════════════════════════════════════════════════════════════════════════════
+
+AVANT DE COMMENCER :
+  - Assurez-vous que Docker Desktop est installé et en cours d'exécution
+  - Vous devriez voir l'icône Docker dans la barre des tâches Windows
+
+
+ÉTAPE 14 : Vérifier que le modèle existe
+------------------------------------------
+COMMANDE :
+Test-Path "model\house_price_model.pkl"
+
+RÉSULTAT ATTENDU : "True"
+SI "False" : Vous devez d'abord entraîner le modèle (ÉTAPE 8)
+
+
+ÉTAPE 15 : Construire l'image Docker
+-------------------------------------
+COMMANDE :
+docker build -t house-price-api:local .
+
+CE QUE ÇA FAIT :
+  - Lit le fichier Dockerfile
+  - Crée une image Docker contenant votre application
+  - -t house-price-api:local : Donne un nom et un tag à l'image
+  - . : Indique que le Dockerfile est dans le dossier actuel
+
+EXPLICATION :
+  - Une image Docker : C'est comme une photo de votre application avec tout ce qu'elle a besoin
+  - Dockerfile : Le plan de construction de l'image
+
+TEMPS : 2 à 5 minutes
+RÉSULTAT ATTENDU : Beaucoup de texte montrant le processus de construction, puis "Successfully built"
+
+
+VÉRIFIER QUE L'IMAGE EST CRÉÉE :
+---------------------------------
+COMMANDE :
+docker images
+
+CE QUE ÇA FAIT : Liste toutes les images Docker sur votre ordinateur
+RÉSULTAT ATTENDU : Vous devriez voir "house-price-api" avec le tag "local"
+
+
+ÉTAPE 16 : Lancer un container Docker
+---------------------------------------
+COMMANDE :
+docker run -d -p 8000:8000 --name house-price-test house-price-api:local
+
+CE QUE ÇA FAIT :
+  - docker run : Lance un container à partir de l'image
+  - -d : Mode détaché (tourne en arrière-plan)
+  - -p 8000:8000 : Mappe le port 8000 du container au port 8000 de votre ordinateur
+  - --name house-price-test : Donne un nom au container
+  - house-price-api:local : L'image à utiliser
+
+EXPLICATION :
+  - Container : Une instance en cours d'exécution de l'image
+  - C'est comme exécuter l'image
+
+RÉSULTAT ATTENDU : Un ID long (l'ID du container)
+
+
+VÉRIFIER QUE LE CONTAINER TOURNE :
+-----------------------------------
+COMMANDE :
+docker ps
+
+CE QUE ÇA FAIT : Liste tous les containers en cours d'exécution
+RÉSULTAT ATTENDU : Vous devriez voir "house-price-test" dans la liste
+
+
+ÉTAPE 17 : Voir les logs du container
+---------------------------------------
+COMMANDE :
+docker logs house-price-test
+
+CE QUE ÇA FAIT : Affiche les logs (messages) du container
+POURQUOI : Pour voir si l'API a bien démarré et s'il y a des erreurs
+RÉSULTAT ATTENDU : Vous devriez voir des messages similaires à quand vous lancez l'API localement
+
+
+ÉTAPE 18 : Tester l'API dans le container
+-------------------------------------------
+Dans un NOUVEAU PowerShell :
+COMMANDE :
+Invoke-WebRequest -Uri http://localhost:8000/health -UseBasicParsing
+
+CE QUE ÇA FAIT : Teste l'API qui tourne dans le container Docker
+RÉSULTAT ATTENDU : StatusCode 200 (ça fonctionne !)
+
+
+ARRÊTER ET SUPPRIMER LE CONTAINER :
+------------------------------------
+COMMANDE :
+docker stop house-price-test
+
+CE QUE ÇA FAIT : Arrête le container
+
+COMMANDE :
+docker rm house-price-test
+
+CE QUE ÇA FAIT : Supprime le container (pas l'image, juste le container)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 7 : DÉPLOIEMENT SUR AZURE
+═══════════════════════════════════════════════════════════════════════════════
+
+AVANT DE COMMENCER :
+  - Vous devez avoir un compte Azure (gratuit pendant 12 mois avec crédits)
+  - Vous devez avoir Azure CLI installé (ÉTAPE 1.4)
+  - Vous devrez avoir une carte de crédit (même si vous utilisez le niveau gratuit)
+
+
+ÉTAPE 19 : Se connecter à Azure
+---------------------------------
+COMMANDE :
+az login
+
+CE QUE ÇA FAIT :
+  1. Ouvre votre navigateur web
+  2. Vous demande de vous connecter à votre compte Azure
+  3. Vous demande d'autoriser Azure CLI à accéder à votre compte
+
+EXPLICATION : Azure CLI doit être authentifié pour pouvoir créer des ressources
+
+CE QUI VA SE PASSER :
+  1. Un message s'affiche avec une URL
+  2. Votre navigateur s'ouvre automatiquement
+  3. Connectez-vous avec votre compte Azure
+  4. Revenez au PowerShell, vous devriez voir la liste de vos abonnements
+
+TEMPS : 1 à 2 minutes
+
+
+VÉRIFIER QUE VOUS ÊTES CONNECTÉ :
+----------------------------------
+COMMANDE :
+az account show
+
+CE QUE ÇA FAIT : Affiche les informations de l'abonnement actif
+RÉSULTAT ATTENDU : Un JSON avec des informations sur votre abonnement Azure
+
+
+ÉTAPE 20 : Utiliser le script de déploiement automatique (RECOMMANDÉ)
+-----------------------------------------------------------------------
+C'est la méthode la plus simple ! Le script fait tout automatiquement.
+
+COMMANDE :
+.\deploy.ps1
+
+CE QUE ÇA FAIT :
+  Le script exécute automatiquement toutes les étapes suivantes :
+  1. Vérifie que vous êtes connecté à Azure
+  2. Crée le groupe de ressources (si nécessaire)
+  3. Crée Azure Container Registry (si nécessaire)
+  4. Build et push l'image Docker vers Azure
+  5. Crée l'environnement Container Apps (si nécessaire)
+  6. Crée ou met à jour la Container App
+  7. Affiche l'URL de votre API déployée
+
+TEMPS : 5 à 10 minutes
+RÉSULTAT ATTENDU :
+  - Beaucoup de messages montrant le processus
+  - À la fin : "✅ DÉPLOIEMENT RÉUSSI !"
+  - L'URL de votre API : https://votre-app.xxxxx.azurecontainerapps.io
+
+
+SI LE SCRIPT NE MARCHE PAS (permission d'exécution) :
+------------------------------------------------------
+COMMANDE (dans PowerShell en tant qu'administrateur) :
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+Puis réessayez : .\deploy.ps1
+
+
+ÉTAPE 21 : Déploiement manuel étape par étape (Alternative)
+-------------------------------------------------------------
+Si vous préférez faire chaque étape manuellement ou si le script ne fonctionne pas :
+
+ÉTAPE 21.1 : Définir les variables
+-----------------------------------
+COMMANDE :
+$RESOURCE_GROUP = "rg-mlops-house-price"
+$LOCATION = "centralus"
+$ACR_NAME = "hprmlkamacr"
+$CONTAINER_APP_NAME = "house-price-api"
+$CONTAINERAPPS_ENV = "env-mlops-house-price"
+$IMAGE_NAME = "house-price-api"
+$IMAGE_TAG = "v1"
+
+CE QUE ÇA FAIT : Définit des variables pour stocker les noms de vos ressources
+POURQUOI : Pour éviter de retaper les mêmes noms à chaque fois
+IMPORTANT : Le nom ACR ($ACR_NAME) doit être UNIQUE globalement (pas juste sur votre compte)
+            Si quelqu'un d'autre a déjà pris "hprmlkamacr", changez-le (minuscules et chiffres uniquement)
+
+
+ÉTAPE 21.2 : Créer le groupe de ressources
+--------------------------------------------
+COMMANDE :
+az group create --name $RESOURCE_GROUP --location $LOCATION
+
+CE QUE ÇA FAIT : Crée un groupe de ressources Azure
+EXPLICATION :
+  - Groupe de ressources : Un conteneur logique pour organiser vos ressources Azure
+  - C'est comme un dossier dans lequel vous mettez toutes vos ressources
+  - $LOCATION : La région Azure où créer les ressources (centralus = États-Unis centre)
+
+TEMPS : 10 à 20 secondes
+RÉSULTAT ATTENDU : Un JSON confirmant la création du groupe de ressources
+
+
+ÉTAPE 21.3 : Créer Azure Container Registry (ACR)
+--------------------------------------------------
+COMMANDE :
+az acr create --resource-group $RESOURCE_GROUP --name $ACR_NAME --sku Basic --admin-enabled true
+
+CE QUE ÇA FAIT : Crée un registre de conteneurs Azure
+EXPLICATION :
+  - ACR : Un endroit privé pour stocker vos images Docker
+  - C'est comme un dépôt Docker privé sur Azure
+  - --sku Basic : Le niveau de service (Basic = le moins cher)
+  - --admin-enabled true : Active l'authentification admin (nécessaire pour push/pull)
+
+TEMPS : 1 à 2 minutes
+RÉSULTAT ATTENDU : Un JSON confirmant la création de l'ACR
+
+IMPORTANT : Si vous avez une erreur "name already exists", quelqu'un d'autre a déjà pris ce nom.
+            Changez $ACR_NAME avec un nom unique (par exemple : hprmlkamVOTRENOMacr)
+
+
+ÉTAPE 21.4 : Récupérer les identifiants ACR
+---------------------------------------------
+COMMANDE :
+$ACR_USERNAME = az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query username -o tsv
+$ACR_PASSWORD = az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "passwords[0].value" -o tsv
+
+Write-Host "ACR Username: $ACR_USERNAME"
+Write-Host "ACR Password: $ACR_PASSWORD"
+
+CE QUE ÇA FAIT : Récupère le nom d'utilisateur et le mot de passe de votre ACR
+EXPLICATION : Vous en aurez besoin pour que Docker puisse envoyer des images vers ACR
+IMPORTANT : NOTEZ CES IDENTIFIANTS ! Vous en aurez besoin plus tard (notamment pour GitHub Actions)
+
+
+ÉTAPE 21.5 : Créer l'environnement Container Apps
+---------------------------------------------------
+COMMANDE :
+az containerapp env create --name $CONTAINERAPPS_ENV --resource-group $RESOURCE_GROUP --location $LOCATION
+
+CE QUE ÇA FAIT : Crée un environnement Container Apps
+EXPLICATION :
+  - Container Apps Environment : L'infrastructure pour exécuter vos applications conteneurisées
+  - C'est comme un serveur virtuel géré par Azure
+  - Plusieurs Container Apps peuvent partager le même environnement
+
+TEMPS : 2 à 3 minutes
+RÉSULTAT ATTENDU : Un JSON confirmant la création de l'environnement
+
+
+ÉTAPE 21.6 : Build et push l'image Docker vers ACR
+----------------------------------------------------
+COMMANDE :
+az acr build --registry $ACR_NAME --image "$IMAGE_NAME`:$IMAGE_TAG" --file Dockerfile .
+
+CE QUE ÇA FAIT :
+  1. Build l'image Docker localement
+  2. Envoie (push) l'image vers votre Azure Container Registry
+  3. L'image est maintenant stockée dans le cloud Azure
+
+EXPLICATION :
+  - az acr build : Utilise les ressources Azure pour builder (plus rapide que de builder localement puis push)
+  - L'image sera accessible à l'adresse : $ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG
+
+TEMPS : 3 à 5 minutes
+RÉSULTAT ATTENDU : Beaucoup de texte montrant le processus de build, puis "Run ID: ... was successful"
+
+
+ÉTAPE 21.7 : Créer la Container App
+-------------------------------------
+COMMANDE :
+az containerapp create `
+  --name $CONTAINER_APP_NAME `
+  --resource-group $RESOURCE_GROUP `
+  --environment $CONTAINERAPPS_ENV `
+  --image "$ACR_NAME.azurecr.io/$IMAGE_NAME`:$IMAGE_TAG" `
+  --registry-server "$ACR_NAME.azurecr.io" `
+  --registry-username $ACR_USERNAME `
+  --registry-password $ACR_PASSWORD `
+  --target-port 8000 `
+  --ingress external `
+  --cpu 1.0 `
+  --memory 2.0Gi
+
+CE QUE ÇA FAIT : Crée une Container App qui exécute votre API
+EXPLICATION :
+  - Container App : Votre application déployée sur Azure
+  - --target-port 8000 : Le port où votre API écoute
+  - --ingress external : Rend l'application accessible depuis Internet (avec une URL publique)
+  - --cpu 1.0 : 1 processeur virtuel
+  - --memory 2.0Gi : 2 Go de mémoire RAM
+  - --registry-* : Les identifiants pour accéder à l'image Docker dans ACR
+
+TEMPS : 2 à 3 minutes
+RÉSULTAT ATTENDU : Un JSON confirmant la création de la Container App
+
+
+ÉTAPE 21.8 : Récupérer l'URL de votre API
+-------------------------------------------
+COMMANDE :
+$APP_URL = az containerapp show --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --query properties.configuration.ingress.fqdn -o tsv
+Write-Host "Votre API est disponible à : https://$APP_URL"
+
+CE QUE ÇA FAIT : Récupère l'URL publique de votre API
+EXPLICATION :
+  - FQDN : Fully Qualified Domain Name (nom de domaine complet)
+  - C'est l'adresse web où votre API est accessible
+
+RÉSULTAT ATTENDU : Une URL comme : https://house-price-api.xxxxx.azurecontainerapps.io
+
+
+ÉTAPE 22 : Tester l'API déployée
+----------------------------------
+ÉTAPE 22.1 : Health check
+--------------------------
+COMMANDE :
+Invoke-WebRequest -Uri "https://$APP_URL/health" -UseBasicParsing
+
+CE QUE ÇA FAIT : Vérifie que l'API fonctionne sur Azure
+RÉSULTAT ATTENDU : StatusCode 200 avec {"status":"healthy","model_loaded":true}
+
+ATTENTION : L'API peut prendre 1 à 2 minutes pour démarrer complètement. Si vous avez une erreur, attendez un peu et réessayez.
+
+
+ÉTAPE 22.2 : Faire une prédiction
+-----------------------------------
+COMMANDE :
+$body = @{
+    GrLivArea = 1500.0
+    BedroomAbvGr = 3
+    FullBath = 2
+    YearBuilt = 2000
+    TotalBsmtSF = 800.0
+} | ConvertTo-Json
+
+$response = Invoke-WebRequest -Uri "https://$APP_URL/predict" -Method POST -Body $body -ContentType "application/json" -UseBasicParsing
+$response.Content
+
+CE QUE ÇA FAIT : Teste l'endpoint de prédiction sur votre API déployée
+RÉSULTAT ATTENDU : Un JSON avec le prix prédit
+
+
+ÉTAPE 22.3 : Voir la documentation Swagger
+-------------------------------------------
+Dans votre navigateur, allez à :
+https://$APP_URL/docs
+
+(Remplacez $APP_URL par l'URL que vous avez récupérée, ou utilisez la variable si elle est toujours définie)
+
+RÉSULTAT ATTENDU : La même interface Swagger que localement, mais sur votre API Azure
+
+
+ÉTAPE 23 : Voir les logs Azure
+-------------------------------
+COMMANDE :
+az containerapp logs show --name $CONTAINER_APP_NAME --resource-group $RESOURCE_GROUP --follow
+
+CE QUE ÇA FAIT : Affiche les logs de votre Container App en temps réel
+EXPLICATION : Utile pour déboguer si quelque chose ne fonctionne pas
+POUR ARRÊTER : Appuyez sur Ctrl + C
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 8 : CI/CD AVEC GITHUB ACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+CI/CD signifie "Continuous Integration / Continuous Deployment"
+Ça veut dire : Intégration Continue / Déploiement Continu
+
+EXPLICATION SIMPLE :
+  - Chaque fois que vous poussez du code sur GitHub, le déploiement se fait automatiquement
+  - Plus besoin de faire les étapes 19-22 manuellement !
+  - Ça économise du temps et garantit que chaque version du code est testée et déployée
+
+
+ÉTAPE 24 : Préparer les secrets GitHub (CRUCIAL)
+--------------------------------------------------
+Pour que GitHub Actions puisse déployer sur Azure, il faut lui donner les permissions.
+
+ÉTAPE 24.1 : Créer un Service Principal Azure
+-----------------------------------------------
+COMMANDE :
+$SUBSCRIPTION_ID = az account show --query id -o tsv
+$RESOURCE_GROUP = "rg-mlops-house-price"
+
+az ad sp create-for-rbac `
+  --name "github-actions-mlops" `
+  --role contributor `
+  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
+  --sdk-auth
+
+CE QUE ÇA FAIT :
+  1. Crée un "Service Principal" (un compte de service)
+  2. Ce compte a les permissions de "contributor" sur votre groupe de ressources
+  3. --sdk-auth : Formate la sortie en JSON pour GitHub Actions
+
+EXPLICATION :
+  - Service Principal : C'est comme un compte robot que GitHub Actions va utiliser
+  - Contributor : Le rôle qui permet de créer/modifier/supprimer des ressources
+  - Scopes : Limite les permissions à votre groupe de ressources spécifique (sécurité)
+
+TEMPS : 10 à 20 secondes
+RÉSULTAT ATTENDU : Un gros JSON avec ces clés :
+  {
+    "clientId": "...",
+    "clientSecret": "...",
+    "subscriptionId": "...",
+    "tenantId": "...",
+    ...
+  }
+
+⚠️ ⚠️ ⚠️ IMPORTANT : COPIEZ TOUT CE JSON ! ⚠️ ⚠️ ⚠️
+Vous ne pourrez plus le voir après. Gardez-le dans un fichier texte temporaire.
+
+
+ÉTAPE 24.2 : Récupérer les identifiants ACR
+---------------------------------------------
+COMMANDE :
+$ACR_NAME = "hprmlkamacr"
+az acr credential show --name $ACR_NAME --resource-group $RESOURCE_GROUP --query "{username:username,password:passwords[0].value}"
+
+CE QUE ÇA FAIT : Affiche le nom d'utilisateur et le mot de passe ACR
+RÉSULTAT ATTENDU : Un JSON avec username et password
+
+⚠️ IMPORTANT : NOTEZ CES VALEURS aussi !
+
+
+ÉTAPE 25 : Ajouter les secrets dans GitHub
+-------------------------------------------
+ÉTAPE 25.1 : Aller sur GitHub
+-------------------------------
+1. Allez sur https://github.com
+2. Connectez-vous à votre compte
+3. Allez dans votre repository (le projet house_price_mlops)
+
+
+ÉTAPE 25.2 : Accéder aux Settings
+-----------------------------------
+1. Cliquez sur l'onglet "Settings" (en haut de votre repository)
+2. Dans le menu de gauche, cherchez "Secrets and variables"
+3. Cliquez sur "Actions"
+
+
+ÉTAPE 25.3 : Ajouter le secret AZURE_CREDENTIALS
+--------------------------------------------------
+1. Cliquez sur "New repository secret"
+2. Name : AZURE_CREDENTIALS (exactement comme ça, en majuscules)
+3. Secret : Collez le JSON COMPLET de l'ÉTAPE 24.1 (tout le JSON entre les accolades {})
+4. Cliquez sur "Add secret"
+
+
+ÉTAPE 25.4 : Ajouter le secret ACR_USERNAME
+---------------------------------------------
+1. Cliquez sur "New repository secret" (encore)
+2. Name : ACR_USERNAME
+3. Secret : Collez le username de l'ÉTAPE 24.2 (juste le nom, pas les guillemets)
+4. Cliquez sur "Add secret"
+
+
+ÉTAPE 25.5 : Ajouter le secret ACR_PASSWORD
+---------------------------------------------
+1. Cliquez sur "New repository secret" (encore)
+2. Name : ACR_PASSWORD
+3. Secret : Collez le password de l'ÉTAPE 24.2 (juste le mot de passe, pas les guillemets)
+4. Cliquez sur "Add secret"
+
+
+VÉRIFICATION :
+Vous devriez maintenant avoir 3 secrets dans la liste :
+  ✓ AZURE_CREDENTIALS
+  ✓ ACR_USERNAME
+  ✓ ACR_PASSWORD
+
+
+ÉTAPE 26 : Vérifier le fichier de workflow CI/CD
+--------------------------------------------------
+Le fichier .github/workflows/ci-cd.yml devrait déjà exister dans votre projet.
+
+VÉRIFIER QU'IL EXISTE :
+COMMANDE :
+Test-Path ".github\workflows\ci-cd.yml"
+
+RÉSULTAT ATTENDU : True
+
+SI FALSE : Le fichier n'existe pas, il faut le créer (mais normalement il devrait être là)
+
+
+ÉTAPE 27 : Commit et push pour déclencher le CI/CD
+----------------------------------------------------
+ÉTAPE 27.1 : Préparer les changements
+---------------------------------------
+COMMANDE :
+git status
+
+CE QUE ÇA FAIT : Montre quels fichiers ont été modifiés
+EXPLICATION : Pour voir ce qui va être envoyé sur GitHub
+
+
+ÉTAPE 27.2 : Ajouter tous les fichiers modifiés
+-------------------------------------------------
+COMMANDE :
+git add .
+
+CE QUE ÇA FAIT : Ajoute tous les fichiers modifiés au "staging area"
+EXPLICATION : Prépare les fichiers à être commités
+
+
+ÉTAPE 27.3 : Créer un commit
+------------------------------
+COMMANDE :
+git commit -m "Configuration CI/CD et documentation"
+
+CE QUE ÇA FAIT : Crée un "commit" (un point de sauvegarde) avec un message
+EXPLICATION : 
+  - Un commit = une version sauvegardée de votre code
+  - Le message décrit ce que vous avez changé
+
+
+ÉTAPE 27.4 : Push vers GitHub
+-------------------------------
+COMMANDE :
+git push origin main
+
+CE QUE ÇA FAIT : Envoie vos commits vers GitHub
+EXPLICATION : 
+  - origin : Le nom du dépôt distant (GitHub)
+  - main : La branche principale
+
+RÉSULTAT ATTENDU : Des messages montrant l'envoi des fichiers, puis "done"
+
+
+ÉTAPE 28 : Vérifier l'exécution du workflow
+---------------------------------------------
+ÉTAPE 28.1 : Aller sur GitHub
+-------------------------------
+1. Allez sur votre repository GitHub dans votre navigateur
+2. Cliquez sur l'onglet "Actions" (en haut)
+
+
+ÉTAPE 28.2 : Voir le workflow en cours
+---------------------------------------
+Vous devriez voir :
+  - Une ligne avec "CI/CD Pipeline" et un point jaune/orange (en cours)
+  - OU un point vert (succès) ou rouge (échec)
+
+Si vous ne voyez rien, attendez 30 secondes et actualisez la page.
+
+
+ÉTAPE 28.3 : Cliquer sur le workflow pour voir les détails
+-------------------------------------------------------------
+1. Cliquez sur la ligne du workflow
+2. Vous verrez 2 "jobs" :
+   - test : Exécute les tests pytest
+   - build-and-deploy : Build et déploie sur Azure
+
+Cliquez sur chaque job pour voir les détails de chaque étape.
+
+
+ÉTAPE 28.4 : Attendre la fin
+------------------------------
+TEMPS ATTENDU : 5 à 10 minutes
+
+CE QUI VA SE PASSER :
+1. Le job "test" s'exécute (1-2 minutes)
+   - Si les tests passent → le job "build-and-deploy" commence
+   - Si les tests échouent → tout s'arrête
+
+2. Le job "build-and-deploy" s'exécute (3-5 minutes)
+   - Build l'image Docker
+   - Push vers ACR
+   - Déploie sur Azure Container Apps
+   - Vérifie que l'API fonctionne
+
+3. Si tout est vert → SUCCÈS ! 🎉
+
+
+ÉTAPE 29 : Vérifier le déploiement automatique
+-----------------------------------------------
+Une fois que le workflow est terminé avec succès :
+
+COMMANDE :
+$APP_URL = az containerapp show --name house-price-api --resource-group rg-mlops-house-price --query properties.configuration.ingress.fqdn -o tsv
+Write-Host "URL: https://$APP_URL"
+
+Puis testez :
+COMMANDE :
+Invoke-WebRequest -Uri "https://$APP_URL/health" -UseBasicParsing
+
+RÉSULTAT ATTENDU : StatusCode 200
+
+FÉLICITATIONS ! 🎉 Votre CI/CD fonctionne maintenant !
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PARTIE 9 : COMMANDES UTILITAIRES
+═══════════════════════════════════════════════════════════════════════════════
+
+Voir les logs Azure en temps réel :
+------------------------------------
+az containerapp logs show --name house-price-api --resource-group rg-mlops-house-price --follow
+
+Arrêter : Ctrl + C
+
+
+Mettre à jour le déploiement après des modifications :
+-------------------------------------------------------
+1. Modifiez votre code
+2. Build et push une nouvelle image :
+   az acr build --registry hprmlkamacr --image house-price-api:v2 --file Dockerfile .
+
+3. Mettre à jour la Container App :
+   az containerapp update --name house-price-api --resource-group rg-mlops-house-price --image hprmlkamacr.azurecr.io/house-price-api:v2
+
+OU SIMPLEMENT :
+- Faites un commit et push sur GitHub
+- Le CI/CD s'occupera du reste automatiquement !
+
+
+Supprimer les ressources Azure (pour économiser de l'argent) :
+----------------------------------------------------------------
+COMMANDE :
+az group delete --name rg-mlops-house-price --yes
+
+CE QUE ÇA FAIT : Supprime TOUT le groupe de ressources (ACR, Container Apps, etc.)
+ATTENTION : C'est définitif ! Toutes vos ressources seront supprimées.
+POURQUOI : Pour ne pas payer pour les ressources quand vous ne les utilisez pas
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  CHECKLIST FINALE
+═══════════════════════════════════════════════════════════════════════════════
+
+☐ Python installé et dans le PATH
+☐ Git installé
+☐ Environnement virtuel créé et activé
+☐ Dépendances installées (pip install -r requirements.txt)
+☐ Données préparées (data/house_prices_clean.csv existe)
+☐ Modèle entraîné (model/house_price_model.pkl existe)
+☐ API locale fonctionne (http://localhost:8000/health retourne 200)
+☐ Tests pytest passent (pytest tests/ -v)
+☐ (Optionnel) Docker fonctionne localement
+☐ Azure CLI installé et connecté (az login)
+☐ Ressources Azure créées (ou script deploy.ps1 exécuté avec succès)
+☐ API déployée sur Azure accessible (https://votre-url/health retourne 200)
+☐ Secrets GitHub configurés (AZURE_CREDENTIALS, ACR_USERNAME, ACR_PASSWORD)
+☐ Workflow CI/CD exécuté avec succès (onglet Actions sur GitHub)
+☐ Déploiement automatique fonctionne
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  PROBLÈMES COURANTS ET SOLUTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+PROBLÈME : "python n'est pas reconnu"
+SOLUTION : Python n'est pas dans le PATH. Réinstallez Python en cochant "Add Python to PATH"
+
+PROBLÈME : "cannot be loaded because running scripts is disabled"
+SOLUTION : Exécutez dans PowerShell Admin : Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+PROBLÈME : "ModuleNotFoundError" lors des tests
+SOLUTION : Activez l'environnement virtuel : .\venv\Scripts\Activate.ps1
+
+PROBLÈME : "ACR name already exists"
+SOLUTION : Le nom ACR est déjà pris. Changez $ACR_NAME dans vos variables avec un nom unique
+
+PROBLÈME : L'API retourne 503 après déploiement
+SOLUTION : L'API met 1-2 minutes à démarrer. Attendez et réessayez. Vérifiez les logs : az containerapp logs show ...
+
+PROBLÈME : Les tests échouent dans GitHub Actions
+SOLUTION : Vérifiez que les tests passent localement d'abord : pytest tests/ -v
+
+PROBLÈME : Le workflow GitHub Actions échoue sur "Azure Login"
+SOLUTION : Vérifiez que le secret AZURE_CREDENTIALS contient le JSON COMPLET de az ad sp create-for-rbac
+
+PROBLÈME : "Resource group not found"
+SOLUTION : Vérifiez que vous êtes dans le bon abonnement Azure : az account show
+
+
+═══════════════════════════════════════════════════════════════════════════════
+  NOTES FINALES
+═══════════════════════════════════════════════════════════════════════════════
+
+- Ce guide couvre TOUT le processus de A à Z
+- Prenez votre temps, lisez chaque explication
+- Si quelque chose ne fonctionne pas, relisez l'explication de cette étape
+- Les ressources Azure peuvent générer des coûts (même si le niveau gratuit existe)
+- N'oubliez pas de supprimer les ressources si vous ne les utilisez plus
+- Le CI/CD est la meilleure façon de déployer : automatique et fiable
+
+BONNE CHANCE ! 🚀
